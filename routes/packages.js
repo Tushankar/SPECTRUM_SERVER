@@ -13,6 +13,38 @@ const router = express.Router();
 const sanitizeHTML = (content) => {
   if (!content || typeof content !== "string") return content;
 
+  // First, convert common markdown patterns to HTML if they exist
+  const markdownToHtml = (text) => {
+    let html = text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold
+      .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italic
+      .replace(/### (.*?)(\n|$)/g, "<h3>$1</h3>") // H3
+      .replace(/## (.*?)(\n|$)/g, "<h2>$1</h2>") // H2
+      .replace(/# (.*?)(\n|$)/g, "<h1>$1</h1>") // H1
+      .replace(/^\- (.*?)$/gm, "<li>$1</li>") // Bullet points
+      .replace(/^\d+\.\s+(.*?)$/gm, "<li>$1</li>") // Numbered list (fixed regex)
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>') // Links
+      .replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>") // Quotes
+      .replace(/`(.*?)`/g, "<code>$1</code>") // Inline code
+      .replace(/\n/g, "<br>"); // Line breaks
+
+    // Better list wrapping - handle consecutive list items
+    html = html.replace(/(<li>.*?<\/li>)(<br>)?(?=<li>)/g, "$1"); // Remove <br> between list items
+    html = html.replace(/(<li>.*?<\/li>)(?:\s*<li>.*?<\/li>)*/g, (match) => {
+      return "<ul>" + match + "</ul>";
+    });
+
+    return html;
+  };
+
+  // Check if content contains markdown patterns
+  const hasMarkdown = /(\*\*.*?\*\*|\*.*?\*|#{1,6}\s|`.*?`|\[.*?\]\(.*?\)|^[\-\d+\.]\s|^>\s)/m.test(content);
+  
+  // Convert markdown to HTML if needed
+  let processedContent = hasMarkdown ? markdownToHtml(content) : content;
+  
+  // No need for additional list wrapping since it's handled in markdownToHtml
+
   // Allow basic HTML tags for rich text content
   const allowedTags = [
     "p",
@@ -35,23 +67,15 @@ const sanitizeHTML = (content) => {
     "code",
     "pre",
     "a",
-    "img",
     "hr",
-    "table",
-    "thead",
-    "tbody",
-    "tr",
-    "th",
-    "td",
   ];
 
   const allowedAttributes = {
-    a: ["href", "title"],
-    img: ["src", "alt", "title", "width", "height"],
+    a: ["href", "title", "target", "rel"],
     "*": ["class"],
   };
 
-  return createDOMPurify.sanitize(content, {
+  return createDOMPurify.sanitize(processedContent, {
     ALLOWED_TAGS: allowedTags,
     ALLOWED_ATTR: Object.values(allowedAttributes).flat(),
     ALLOW_DATA_ATTR: false,
