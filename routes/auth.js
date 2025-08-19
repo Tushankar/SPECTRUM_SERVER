@@ -134,7 +134,8 @@ router.post("/login", async (req, res) => {
     // Check if user is active
     if (userData.isActive === false) {
       return res.status(403).json({
-        error: "Your account has been deactivated. Please contact administrator."
+        error:
+          "Your account has been deactivated. Please contact administrator.",
       });
     }
 
@@ -914,7 +915,9 @@ router.post("/admin/register-user", async (req, res) => {
       });
 
       // Set default profile picture using pravatar.cc (same as in frontend)
-      const defaultProfilePicture = `${process.env.AVATAR_SERVICE_URL || 'https://i.pravatar.cc'}/150?u=${email}`;
+      const defaultProfilePicture = `${
+        process.env.AVATAR_SERVICE_URL || "https://i.pravatar.cc"
+      }/150?u=${email}`;
 
       // Store additional user data in Firestore using admin SDK
       const userDoc = await adminDb.collection("users").add({
@@ -1049,22 +1052,22 @@ router.put("/users/:userId/status", async (req, res) => {
     const { userId } = req.params;
     const { isActive } = req.body;
 
-    if (typeof isActive !== 'boolean') {
+    if (typeof isActive !== "boolean") {
       return res.status(400).json({
-        error: "isActive must be a boolean value"
+        error: "isActive must be a boolean value",
       });
     }
 
     const adminDb = getAdminDB();
     const usersRef = adminDb.collection("users");
-    
+
     // Find user document by uid
     const q = usersRef.where("uid", "==", userId);
     const querySnapshot = await q.get();
 
     if (querySnapshot.empty) {
       return res.status(404).json({
-        error: "User not found"
+        error: "User not found",
       });
     }
 
@@ -1072,19 +1075,54 @@ router.put("/users/:userId/status", async (req, res) => {
     const userDoc = querySnapshot.docs[0];
     await userDoc.ref.update({
       isActive: isActive,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
 
     res.status(200).json({
-      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+      message: `User ${isActive ? "activated" : "deactivated"} successfully`,
       userId: userId,
-      isActive: isActive
+      isActive: isActive,
     });
-
   } catch (error) {
     console.error("Update user status error:", error);
     res.status(500).json({
-      error: error.message || "Failed to update user status"
+      error: error.message || "Failed to update user status",
+    });
+  }
+});
+
+// Get user statistics
+router.get("/users/stats", async (req, res) => {
+  try {
+    const adminDb = getAdminDB();
+    const usersRef = adminDb.collection("users");
+
+    // Get all users
+    const querySnapshot = await usersRef.get();
+
+    let totalUsers = 0;
+    let activeUsers = 0;
+
+    querySnapshot.forEach((doc) => {
+      const userData = doc.data();
+      totalUsers++;
+      if (userData.isActive !== false) {
+        // Default to active if isActive is not set
+        activeUsers++;
+      }
+    });
+
+    res.status(200).json({
+      stats: {
+        totalUsers,
+        activeUsers,
+        inactiveUsers: totalUsers - activeUsers,
+      },
+    });
+  } catch (error) {
+    console.error("Get user stats error:", error);
+    res.status(500).json({
+      error: error.message || "Failed to get user statistics",
     });
   }
 });
