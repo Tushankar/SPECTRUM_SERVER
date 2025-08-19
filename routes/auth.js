@@ -374,7 +374,7 @@ router.get("/users", async (req, res) => {
         businessCategory: userData.businessCategory || "",
         profilePicture: userData.profilePicture || null,
         role: userData.role || "user",
-        isActive: userData.isActive || true,
+        isActive: userData.isActive !== false, // Default to true only if not explicitly false
         createdAt: userData.createdAt || null,
         updatedAt: userData.updatedAt || null,
         createdBy: userData.createdBy || null,
