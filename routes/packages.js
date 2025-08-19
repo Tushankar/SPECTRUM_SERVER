@@ -23,7 +23,10 @@ const sanitizeHTML = (content) => {
       .replace(/# (.*?)(\n|$)/g, "<h1>$1</h1>") // H1
       .replace(/^\- (.*?)$/gm, "<li>$1</li>") // Bullet points
       .replace(/^\d+\.\s+(.*?)$/gm, "<li>$1</li>") // Numbered list (fixed regex)
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>') // Links
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+      ) // Links
       .replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>") // Quotes
       .replace(/`(.*?)`/g, "<code>$1</code>") // Inline code
       .replace(/\n/g, "<br>"); // Line breaks
@@ -38,11 +41,14 @@ const sanitizeHTML = (content) => {
   };
 
   // Check if content contains markdown patterns
-  const hasMarkdown = /(\*\*.*?\*\*|\*.*?\*|#{1,6}\s|`.*?`|\[.*?\]\(.*?\)|^[\-\d+\.]\s|^>\s)/m.test(content);
-  
+  const hasMarkdown =
+    /(\*\*.*?\*\*|\*.*?\*|#{1,6}\s|`.*?`|\[.*?\]\(.*?\)|^[\-\d+\.]\s|^>\s)/m.test(
+      content
+    );
+
   // Convert markdown to HTML if needed
   let processedContent = hasMarkdown ? markdownToHtml(content) : content;
-  
+
   // No need for additional list wrapping since it's handled in markdownToHtml
 
   // Allow basic HTML tags for rich text content
