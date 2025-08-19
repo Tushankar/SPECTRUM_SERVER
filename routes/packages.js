@@ -22,7 +22,7 @@ const sanitizeHTML = (content) => {
       .replace(/## (.*?)(\n|$)/g, "<h2>$1</h2>") // H2
       .replace(/# (.*?)(\n|$)/g, "<h1>$1</h1>") // H1
       .replace(/^\- (.*?)$/gm, "<li>$1</li>") // Bullet points
-      .replace(/^\d+\.\s+(.*?)$/gm, "<li>$1</li>") // Numbered list (fixed regex)
+      .replace(/^\d+\.\s+(.*?)$/gm, "<li>$1</li>") // Numbered list
       .replace(
         /\[([^\]]+)\]\(([^)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
@@ -31,11 +31,8 @@ const sanitizeHTML = (content) => {
       .replace(/`(.*?)`/g, "<code>$1</code>") // Inline code
       .replace(/\n/g, "<br>"); // Line breaks
 
-    // Better list wrapping - handle consecutive list items
-    html = html.replace(/(<li>.*?<\/li>)(<br>)?(?=<li>)/g, "$1"); // Remove <br> between list items
-    html = html.replace(/(<li>.*?<\/li>)(?:\s*<li>.*?<\/li>)*/g, (match) => {
-      return "<ul>" + match + "</ul>";
-    });
+    // Improved list wrapping - handle consecutive list items properly
+    html = html.replace(/(<li>.*?<\/li>)(\s*<li>.*?<\/li>)*/g, "<ul>$&</ul>");
 
     return html;
   };
@@ -48,8 +45,6 @@ const sanitizeHTML = (content) => {
 
   // Convert markdown to HTML if needed
   let processedContent = hasMarkdown ? markdownToHtml(content) : content;
-
-  // No need for additional list wrapping since it's handled in markdownToHtml
 
   // Allow basic HTML tags for rich text content
   const allowedTags = [
@@ -83,9 +78,10 @@ const sanitizeHTML = (content) => {
 
   return createDOMPurify.sanitize(processedContent, {
     ALLOWED_TAGS: allowedTags,
-    ALLOWED_ATTR: Object.values(allowedAttributes).flat(),
+    ALLOWED_ATTR: ["href", "title", "target", "rel", "class"],
     ALLOW_DATA_ATTR: false,
     ALLOW_UNKNOWN_PROTOCOLS: false,
+    KEEP_CONTENT: true,
   });
 };
 
