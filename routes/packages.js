@@ -1,7 +1,63 @@
 import express from "express";
 import { getAdminDB } from "../config/firebase-admin.js";
+import DOMPurify from "dompurify";
+import { JSDOM } from "jsdom";
+
+// Create a DOM window for DOMPurify
+const window = new JSDOM("").window;
+const createDOMPurify = DOMPurify(window);
 
 const router = express.Router();
+
+// Helper function to sanitize HTML content
+const sanitizeHTML = (content) => {
+  if (!content || typeof content !== "string") return content;
+
+  // Allow basic HTML tags for rich text content
+  const allowedTags = [
+    "p",
+    "br",
+    "strong",
+    "b",
+    "em",
+    "i",
+    "u",
+    "ul",
+    "ol",
+    "li",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "blockquote",
+    "code",
+    "pre",
+    "a",
+    "img",
+    "hr",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+  ];
+
+  const allowedAttributes = {
+    a: ["href", "title"],
+    img: ["src", "alt", "title", "width", "height"],
+    "*": ["class"],
+  };
+
+  return createDOMPurify.sanitize(content, {
+    ALLOWED_TAGS: allowedTags,
+    ALLOWED_ATTR: Object.values(allowedAttributes).flat(),
+    ALLOW_DATA_ATTR: false,
+    ALLOW_UNKNOWN_PROTOCOLS: false,
+  });
+};
 
 // Helper function to generate package ID
 const generatePackageId = () => {
@@ -229,8 +285,8 @@ router.post("/", async (req, res) => {
 
     const packageData = {
       packageId,
-      name,
-      description,
+      name: name.trim(),
+      description: sanitizeHTML(description),
       price: parseFloat(price),
       duration: duration || "1 year",
       features: features || [],
@@ -291,6 +347,16 @@ router.put("/:id", async (req, res) => {
     // Convert price to number if provided
     if (updates.price) {
       updates.price = parseFloat(updates.price);
+    }
+
+    // Sanitize description if provided
+    if (updates.description) {
+      updates.description = sanitizeHTML(updates.description);
+    }
+
+    // Trim name if provided
+    if (updates.name) {
+      updates.name = updates.name.trim();
     }
 
     const updateData = {
