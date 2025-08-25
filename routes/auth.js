@@ -637,6 +637,17 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Verify email configuration on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Email configuration error:", error);
+    console.error("   Please check EMAIL_USER and EMAIL_PASS in .env file");
+  } else {
+    console.log("✅ Email configuration verified successfully");
+    console.log(`   Using email: ${process.env.EMAIL_USER}`);
+  }
+});
+
 // Generate random OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -998,10 +1009,27 @@ router.post("/admin/register-user", async (req, res) => {
         `,
       };
 
-      await transporter.sendMail(mailOptions);
+      // Try to send welcome email with credentials
+      let emailSent = false;
+      let emailError = null;
+
+      try {
+        await transporter.sendMail(mailOptions);
+        emailSent = true;
+        console.log(`✅ Welcome email sent successfully to ${email}`);
+      } catch (emailSendError) {
+        emailError = emailSendError.message;
+        console.error(
+          `❌ Failed to send welcome email to ${email}:`,
+          emailSendError
+        );
+        // Don't fail the entire user creation if email fails
+      }
 
       res.status(201).json({
-        message: "User created successfully and credentials sent via email",
+        message: emailSent
+          ? "User created successfully and credentials sent via email"
+          : "User created successfully but failed to send email",
         user: {
           uid: userRecord.uid,
           email: email,
@@ -1016,7 +1044,8 @@ router.post("/admin/register-user", async (req, res) => {
           role: role,
           isActive: true,
         },
-        emailSent: true,
+        emailSent: emailSent,
+        emailError: emailError,
       });
     } catch (authError) {
       console.error("Admin user creation error:", authError);
