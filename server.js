@@ -34,12 +34,41 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet());
+
+// Enhanced CORS configuration to handle multiple origins
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:5173",
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  "https://vocal-nougat-e6e714.netlify.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173"
+];
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false,
+    optionsSuccessStatus: 200
   })
 );
+
+// Explicit OPTIONS handler for preflight requests
+app.options('*', cors());
+
 app.use(morgan("combined"));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -48,6 +77,29 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use((req, res, next) => {
   req.firebase = { auth, db, storage };
   next();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    cors_origins: [
+      process.env.CLIENT_URL || "http://localhost:5173",
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "https://vocal-nougat-e6e714.netlify.app"
+    ]
+  });
+});
+
+// CORS debugging endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.status(200).json({
+    message: 'CORS is working',
+    origin: req.get('Origin'),
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Firebase configuration
